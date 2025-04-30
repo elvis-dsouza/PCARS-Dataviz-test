@@ -1,0 +1,209 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="lib/papaparse.min.js"></script>
+    <style type="text/tailwindcss">
+        @theme {
+          --color-clifford: #da373d;
+        }
+    </style>
+  </head>
+  <body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto p-4">
+      <h1 class="text-3xl font-bold mb-6 text-clifford text-center">
+        PCARS Data Visualization
+      </h1>
+      
+      <div class="flex flex-col md:flex-row gap-4">
+        <!-- Left Panel with Tabs -->
+        <div class="md:w-1/3 bg-white rounded-lg shadow-md">
+          <!-- Tab Navigation -->
+          <div class="flex border-b">
+            <button class="tab-btn active px-4 py-2 text-blue-600 border-b-2 border-blue-500" data-tab="tab1">Data</button>
+            <button class="tab-btn px-4 py-2 text-gray-500" data-tab="tab2">Configuration</button>
+            <button class="tab-btn px-4 py-2 text-gray-500" data-tab="tab3">Design</button>
+          </div>
+          
+          <!-- Tab Content -->
+          <div class="p-4">
+            <div id="tab1" class="tab-content">
+              <h2 class="text-xl font-bold mb-3">Data</h2>
+              <p class="mb-2">Select data to display:</p>
+              <div class="space-y-2">
+                <label class="flex items-center">
+                  <input type="checkbox" class="mr-2" checked> Speed
+                </label>
+                <label class="flex items-center">
+                  <input type="checkbox" class="mr-2"> RPM
+                </label>
+                <label class="flex items-center">
+                  <input type="checkbox" class="mr-2"> Lap Time
+                </label>
+              </div>
+              <div>
+                <table id="datatable" class="demo"></table>
+              </div>
+            </div>
+            
+            <div id="tab2" class="tab-content hidden">
+              <h2 class="text-xl font-bold mb-3">Configuration</h2>
+              <div class="space-y-3">
+                <div>
+                  <label class="block text-sm font-medium">Chart Type</label>
+                  <select class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" id="chartTypeSelector">
+                    <option>Line</option>
+                    <option>Bar</option>
+                    <option>Area</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium"></label>x-axis data</label>
+                  <select class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" id="xAxisDSSelector">
+                    <option>Column 1</option>
+                    <option>Column 2</option>
+                    <option>Column 3</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium">y-axis data</label>
+                  <select class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" id="yAxisDSSelector">
+                    <option>Column 1</option>
+                    <option>Column 2</option>
+                    <option>Column 3</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            
+            <div id="tab3" class="tab-content hidden">
+              <h2 class="text-xl font-bold mb-3">Design Settings</h2>
+              <ul class="list-disc pl-5 space-y-1">
+                <li>Telemetry Data</li>
+                <li>Race Results</li>
+                <li>Car Setup</li>
+                <li>Track Information</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Right Panel for Graph -->
+        <div class="md:w-2/3 bg-white p-4 rounded-lg shadow-md">
+          <h2 class="text-xl font-bold mb-4">Data Visualisation</h2>
+          <div class="bg-gray-50 p-2 border rounded-lg h-80">
+            <canvas id="myChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Tab functionality
+      document.addEventListener('DOMContentLoaded', function() {
+        const tabButtons = document.querySelectorAll('.tab-btn');
+        
+        tabButtons.forEach(button => {
+          button.addEventListener('click', () => {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+              content.classList.add('hidden');
+            });
+            
+            // Remove active class from all buttons
+            tabButtons.forEach(btn => {
+              btn.classList.remove('active', 'text-blue-600', 'border-b-2', 'border-blue-500');
+              btn.classList.add('text-gray-500');
+            });
+            
+            // Show the selected tab content
+            const tabId = button.getAttribute('data-tab');
+            document.getElementById(tabId).classList.remove('hidden');
+            
+            // Add active class to the clicked button
+            button.classList.add('active', 'text-blue-600', 'border-b-2', 'border-blue-500');
+            button.classList.remove('text-gray-500');
+          });
+        });
+        
+        // Initialize chart
+        const ctx = document.getElementById('myChart').getContext('2d');
+        const myChart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: ['Start', 'Sector 1', 'Sector 2', 'Sector 3', 'Finish'],
+            datasets: [{
+              label: 'Speed (mph)',
+              data: [0, 120, 160, 140, 180],
+              borderColor: 'rgb(59, 130, 246)',
+              backgroundColor: 'rgba(59, 130, 246, 0.1)',
+              fill: true,
+              tension: 0.3
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              title: {
+                display: true,
+                text: 'Lap Performance Data'
+              }
+            }
+          }
+        });
+        
+        // Add event listener for chart type selector
+        document.getElementById('chartTypeSelector').addEventListener('change', function() {
+          const selectedType = this.value.toLowerCase();
+          
+          // Determine the actual chart type (handle 'Area' specially)
+          let chartType = selectedType;
+          let fillOption = false;
+          
+          if (selectedType === 'area') {
+            chartType = 'line';
+            fillOption = true;
+          }
+          
+          // Update chart configuration
+          myChart.config.type = chartType;
+          myChart.data.datasets.forEach(dataset => {
+            dataset.fill = fillOption;
+          });
+          
+          // Update the chart
+          myChart.update();
+        });
+
+        //Add data loading functionality
+        function loadDataCSV () {
+          Papa.parse("sample_customer100.csv", {
+            download: true,
+            skipEmptyLines: true,
+
+            complete : csv => {
+              var table = document.getElementById("datatable");
+              table.innerHTML = "";
+
+              // Draw table rows
+              for (let row of csv.data) {
+                let tr = table.insertRow();
+                for (let cell of row) {
+                  let td = tr.insertCell();
+                  td.innerHTML = cell;
+                }
+              }
+            }
+          });
+        }
+
+        loadDataCSV(); // Call the function to load data on page load
+
+      });
+    </script>
+  </body>
+</html>
