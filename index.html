@@ -96,7 +96,7 @@
         </div>
         
         <!-- Right Panel for Graph -->
-        <div class="md:w-2/3 bg-white p-4 rounded-lg shadow-md">
+        <div class="md:w-1/2 bg-white p-4 rounded-lg shadow-md">
           <h2 class="text-xl font-bold mb-4">Data Visualisation</h2>
           <div class="bg-gray-50 p-2 border rounded-lg h-80">
             <canvas id="myChart"></canvas>
@@ -183,9 +183,36 @@
           myChart.update();
         });
 
+        function updateChartData (xData, yData) {
+          myChart.data.labels = xData;
+          myChart.data.datasets[0].data = yData;
+          myChart.update();
+        }
+
+        function updateColumns (columnList) {
+          const xAxisSelector = document.getElementById('xAxisDSSelector');
+          const yAxisSelector = document.getElementById('yAxisDSSelector');
+          xAxisSelector.innerHTML = '';
+          yAxisSelector.innerHTML = '';
+
+          columnList.forEach(column => {
+            const optionX = document.createElement('option');
+            optionX.value = column;
+            optionX.textContent = column;
+            xAxisSelector.appendChild(optionX);
+
+            const optionY = document.createElement('option');
+            optionY.value = column;
+            optionY.textContent = column;
+            yAxisSelector.appendChild(optionY);
+          });
+        }
+
+        let dataset = {};
+
         //Add data loading functionality
         function loadDataCSV () {
-          Papa.parse("sample_customer100.csv", {
+          Papa.parse("iris.csv", {
             download: true,
             skipEmptyLines: true,
 
@@ -194,8 +221,16 @@
               table.innerHTML = "";
 
               let headers = csv.data.shift();
+              updateColumns(headers); // Update the columns in the dropdowns
+
               // Create the table header row (<tr>) and fill it with <th> elements
               let headerRow = document.createElement('tr');
+
+              // Make a dataset as a dictionary mapping column names to data
+              dataset = {};
+              headers.forEach((header, index) => {
+                dataset[header] = csv.data.map(row => row[index]);
+              });
 
               // Loop through the header array and create <th> elements
               headers.forEach(header => {
@@ -209,18 +244,34 @@
 
               // Draw table rows
               for (let row of csv.data) {
-                let tr = table.insertRow();
+                let tr = table.insertRow()
                 for (let cell of row) {
-                  let td = tr.insertCell();
+                  let td = tr.insertCell()
                   td .classList.add("border-b", "border-gray-100", "px-4", "py-2");  // Add Tailwind classes for row styling
-                  td.innerHTML = cell;
+                  td.innerHTML = cell
                 }
               }
+
+              const xData = dataset[document.getElementById('xAxisDSSelector').value];
+              const yData = dataset[document.getElementById('yAxisDSSelector').value];
+              updateChartData(xData, yData);
             }
           });
         }
 
         loadDataCSV(); // Call the function to load data on page load
+
+        // When the x-axis or y-axis selector changes, update the chart data
+        document.getElementById('xAxisDSSelector').addEventListener('change', function() {
+          const xData = dataset[this.value];
+          const yData = dataset[document.getElementById('yAxisDSSelector').value];
+          updateChartData(xData, yData);
+        });
+        document.getElementById('yAxisDSSelector').addEventListener('change', function() {
+          const xData = dataset[document.getElementById('xAxisDSSelector').value];
+          const yData = dataset[this.value];
+          updateChartData(xData, yData);
+        });
 
       });
     </script>
