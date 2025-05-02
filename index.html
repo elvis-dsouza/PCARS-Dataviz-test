@@ -84,14 +84,28 @@
             </div>
             
             <div id="tab3" class="tab-content hidden">
-              <h2 class="text-xl font-bold mb-3">Design Settings</h2>
-              <ul class="list-disc pl-5 space-y-1">
-                <li>Telemetry Data</li>
-                <li>Race Results</li>
-                <li>Car Setup</li>
-                <li>Track Information</li>
-              </ul>
+              <!-- Select theme color -->
+              <h2 class="text-xl font-bold mb-3">Design</h2>
+              <div class="space-y-3">
+                <label class="block text-sm font-medium">Select Theme Colour</label>
+                <select class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" id="themeColorSelector">
+                  <option value="#da373d">Red</option>
+                  <option value="#3b82f6">Blue</option>
+                  <option value="#4ade80">Green</option>
+                  <option value="#fbbf24">Yellow</option>
+                  <option value="#9333ea">Purple</option>
+                  <option value="#f472b6">Pink</option>
+                  <option value="#64748b">Gray</option>
+                  <option value="#000000">Black</option>
+                  <option value="">Custom</option>
+                </select>
+                <div class="mt-4" id="customColorPicker" style="display: none;">
+                  <label class="block text-sm font-medium">Select Chart Colour</label>
+                  <input type="color" id="chartColorSelector" value="#3b82f6" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                </div>                  
+              </div>
             </div>
+
           </div>
         </div>
         
@@ -140,7 +154,7 @@
           data: {
             labels: ['Start', 'Sector 1', 'Sector 2', 'Sector 3', 'Finish'],
             datasets: [{
-              label: 'Speed (mph)',
+              label: '<y-axis>',
               data: [0, 120, 160, 140, 180],
               borderColor: 'rgb(59, 130, 246)',
               backgroundColor: 'rgba(59, 130, 246, 0.1)',
@@ -183,9 +197,18 @@
           myChart.update();
         });
 
-        function updateChartData (xData, yData) {
+        function updateChartData (xData, yData, yLabel) {
           myChart.data.labels = xData;
           myChart.data.datasets[0].data = yData;
+          myChart.data.datasets[0].label = yLabel;
+          myChart.update();
+        }
+
+        // Function to update chart colours
+        function updateChartColours (colour) {
+          myChart.data.datasets[0].borderColor = colour;
+          // reduce opacity of the background colour
+          myChart.data.datasets[0].backgroundColor = colour + '33'; // 20% opacity
           myChart.update();
         }
 
@@ -253,8 +276,9 @@
               }
 
               const xData = dataset[document.getElementById('xAxisDSSelector').value];
-              const yData = dataset[document.getElementById('yAxisDSSelector').value];
-              updateChartData(xData, yData);
+              const yLabel = document.getElementById('yAxisDSSelector').value;
+              const yData = dataset[yLabel];
+              updateChartData(xData, yData, yLabel);
             }
           });
         }
@@ -264,13 +288,32 @@
         // When the x-axis or y-axis selector changes, update the chart data
         document.getElementById('xAxisDSSelector').addEventListener('change', function() {
           const xData = dataset[this.value];
-          const yData = dataset[document.getElementById('yAxisDSSelector').value];
-          updateChartData(xData, yData);
+          const yLabel = document.getElementById('yAxisDSSelector').value;
+          const yData = dataset[yLabel];
+          updateChartData(xData, yData, yLabel);
         });
         document.getElementById('yAxisDSSelector').addEventListener('change', function() {
           const xData = dataset[document.getElementById('xAxisDSSelector').value];
-          const yData = dataset[this.value];
-          updateChartData(xData, yData);
+          const yLabel = this.value;
+          const yData = dataset[yLabel];
+          updateChartData(xData, yData, yLabel);
+        });
+
+
+        // Design tab functionality
+        document.getElementById('themeColorSelector').addEventListener('change', function() {
+          const selectedColor = this.value;
+          if (selectedColor === '') {
+            document.getElementById('customColorPicker').style.display = 'block';
+          } else {
+            document.getElementById('customColorPicker').style.display = 'none';
+            updateChartColours(selectedColor);
+          }
+        });
+
+        document.getElementById('chartColorSelector').addEventListener('input', function() {
+          const selectedColor = this.value;
+          updateChartColours(selectedColor);
         });
 
       });
