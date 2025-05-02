@@ -89,8 +89,8 @@
               <div class="space-y-3">
                 <label class="block text-sm font-medium">Select Theme Colour</label>
                 <select class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" id="themeColorSelector">
-                  <option value="#da373d">Red</option>
                   <option value="#3b82f6">Blue</option>
+                  <option value="#da373d">Red</option>
                   <option value="#4ade80">Green</option>
                   <option value="#fbbf24">Yellow</option>
                   <option value="#9333ea">Purple</option>
@@ -114,6 +114,10 @@
           <h2 class="text-xl font-bold mb-4">Data Visualisation</h2>
           <div class="bg-gray-50 p-2 border rounded-lg h-80">
             <canvas id="myChart"></canvas>
+          </div>
+          <div>
+            <!-- download button -->
+            <button class="mt-4 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 cursor-pointer" id="downloadBtn">Download</button>
           </div>
         </div>
       </div>
@@ -270,7 +274,7 @@
                 let tr = table.insertRow()
                 for (let cell of row) {
                   let td = tr.insertCell()
-                  td .classList.add("border-b", "border-gray-100", "px-4", "py-2");  // Add Tailwind classes for row styling
+                  td.classList.add("border-b", "border-gray-100", "px-4", "py-2");  // Add Tailwind classes for row styling
                   td.innerHTML = cell
                 }
               }
@@ -314,6 +318,14 @@
         document.getElementById('chartColorSelector').addEventListener('input', function() {
           const selectedColor = this.value;
           updateChartColours(selectedColor);
+        });
+
+        // Download button functionality
+        document.getElementById('downloadBtn').addEventListener('click', function() {
+          const link = document.createElement('a');
+          link.href = myChart.toBase64Image();
+          link.download = 'chart.png';
+          link.click();
         });
 
       });
