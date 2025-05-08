@@ -23,9 +23,9 @@
         <div class="md:w-1/2 bg-white rounded-lg shadow-md h-full">
           <!-- Tab Navigation -->
           <div class="flex border-b">
-            <button class="tab-btn active px-4 py-2 text-blue-600 border-b-2 border-blue-500 cursor-pointer" data-tab="tab1">Data</button>
-            <button class="tab-btn px-4 py-2 text-gray-500 cursor-pointer" data-tab="tab2">Configuration</button>
-            <button class="tab-btn px-4 py-2 text-gray-500 cursor-pointer" data-tab="tab3">Design</button>
+            <button class="tab-btn active px-4 py-2 text-blue-600 border-b-2 border-blue-500 cursor-pointer" data-tab="tab1">Dataset</button>
+            <button class="tab-btn px-4 py-2 text-gray-500 cursor-pointer" data-tab="tab2">Graph Settings</button>
+            <button class="tab-btn px-4 py-2 text-gray-500 cursor-pointer" data-tab="tab3">Format</button>
           </div>
           
           <!-- Tab Content -->
@@ -57,8 +57,8 @@
               <h2 class="text-xl font-bold mb-3">Configuration</h2>
               <div class="space-y-3">
                 <div>
-                  <label class="block text-sm font-medium">Chart Type</label>
-                  <select class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" id="chartTypeSelector">
+                  <label class="block text-sm font-medium">Graph Type</label>
+                  <select class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" id="graphTypeSelector">
                     <option>Line</option>
                     <option>Bar</option>
                     <option>Area</option>
@@ -100,8 +100,8 @@
                   <option value="">Custom</option>
                 </select>
                 <div class="mt-4" id="customColorPicker" style="display: none;">
-                  <label class="block text-sm font-medium">Select Chart Colour</label>
-                  <input type="color" id="chartColorSelector" value="#3b82f6" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                  <label class="block text-sm font-medium">Select Graph Colour</label>
+                  <input type="color" id="graphColorSelector" value="#3b82f6" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                 </div>                  
               </div>
             </div>
@@ -113,7 +113,7 @@
         <div class="md:w-1/2 bg-white p-4 rounded-lg shadow-md">
           <h2 class="text-xl font-bold mb-4">Data Visualisation</h2>
           <div class="bg-gray-50 p-2 border rounded-lg h-80">
-            <canvas id="myChart"></canvas>
+            <canvas id="mainGraph"></canvas>
           </div>
           <div>
             <!-- download button -->
@@ -151,9 +151,9 @@
           });
         });
         
-        // Initialize chart
-        const ctx = document.getElementById('myChart').getContext('2d');
-        const myChart = new Chart(ctx, {
+        // Initialize graph
+        const ctx = document.getElementById('mainGraph').getContext('2d');
+        const mainGraph = new Chart(ctx, {
           type: 'line',
           data: {
             labels: ['Start', 'Sector 1', 'Sector 2', 'Sector 3', 'Finish'],
@@ -178,42 +178,43 @@
           }
         });
         
-        // Add event listener for chart type selector
-        document.getElementById('chartTypeSelector').addEventListener('change', function() {
+        // Add event listener for graph type selector
+        document.getElementById('graphTypeSelector').addEventListener('change', function() {
           const selectedType = this.value.toLowerCase();
           
-          // Determine the actual chart type (handle 'Area' specially)
-          let chartType = selectedType;
+          // Determine the actual graph type (handle 'Area' specially)
+          let graphType = selectedType;
           let fillOption = false;
           
           if (selectedType === 'area') {
-            chartType = 'line';
+            graphType = 'line';
             fillOption = true;
           }
           
-          // Update chart configuration
-          myChart.config.type = chartType;
-          myChart.data.datasets.forEach(dataset => {
+          // Update graph configuration
+          mainGraph.config.type = graphType;
+          mainGraph.data.datasets.forEach(dataset => {
             dataset.fill = fillOption;
           });
           
-          // Update the chart
-          myChart.update();
+          // Update the graph
+          mainGraph.update();
         });
 
-        function updateChartData (xData, yData, yLabel) {
-          myChart.data.labels = xData;
-          myChart.data.datasets[0].data = yData;
-          myChart.data.datasets[0].label = yLabel;
-          myChart.update();
+        // Function to update graph data
+        function updateGraphData (xData, yData, yLabel) {
+          mainGraph.data.labels = xData;
+          mainGraph.data.datasets[0].data = yData;
+          mainGraph.data.datasets[0].label = yLabel;
+          mainGraph.update();
         }
 
-        // Function to update chart colours
-        function updateChartColours (colour) {
-          myChart.data.datasets[0].borderColor = colour;
+        // Function to update graph colours
+        function updateGraphColours (colour) {
+          mainGraph.data.datasets[0].borderColor = colour;
           // reduce opacity of the background colour
-          myChart.data.datasets[0].backgroundColor = colour + '33'; // 20% opacity
-          myChart.update();
+          mainGraph.data.datasets[0].backgroundColor = colour + '33'; // 20% opacity
+          mainGraph.update();
         }
 
         function updateColumns (columnList) {
@@ -239,7 +240,7 @@
 
         //Add data loading functionality
         function loadDataCSV () {
-          Papa.parse("iris.csv", {
+          Papa.parse("pcars.csv", {
             download: true,
             skipEmptyLines: true,
 
@@ -252,6 +253,7 @@
 
               // Create the table header row (<tr>) and fill it with <th> elements
               let headerRow = document.createElement('tr');
+              headerRow.classList.add("bg-gray-100", "border-b", "border-gray-200", "text-gray-600");
 
               // Make a dataset as a dictionary mapping column names to data
               dataset = {};
@@ -262,7 +264,7 @@
               // Loop through the header array and create <th> elements
               headers.forEach(header => {
                 let th = document.createElement('th');
-                th.classList.add("border-b", "border-gray-200", "px-4", "py-2", "text-left");  // Add Tailwind classes
+                th.classList.add("border", "border-gray-200", "px-4", "py-2");
                 th.textContent = header;  // Set the text content of the header cell
                 headerRow.appendChild(th);  // Append the <th> to the header row
               });
@@ -272,35 +274,42 @@
               // Draw table rows
               for (let row of csv.data) {
                 let tr = table.insertRow()
-                for (let cell of row) {
-                  let td = tr.insertCell()
-                  td.classList.add("border-b", "border-gray-100", "px-4", "py-2");  // Add Tailwind classes for row styling
-                  td.innerHTML = cell
+                for (let [index,cell] of row.entries()) {
+                  if (index == 0) {
+                    let th = document.createElement('th');
+                    th.classList.add("bg-gray-100", "border", "border-gray-200", "text-gray-600", "px-4", "py-2");
+                    th.textContent = cell
+                    tr.appendChild(th)
+                  } else {
+                    let td = tr.insertCell()
+                    td.classList.add("border", "border-gray-100", "px-4", "py-2");
+                    td.innerHTML = cell
+                  }
                 }
               }
 
               const xData = dataset[document.getElementById('xAxisDSSelector').value];
               const yLabel = document.getElementById('yAxisDSSelector').value;
               const yData = dataset[yLabel];
-              updateChartData(xData, yData, yLabel);
+              updateGraphData(xData, yData, yLabel);
             }
           });
         }
 
         loadDataCSV(); // Call the function to load data on page load
 
-        // When the x-axis or y-axis selector changes, update the chart data
+        // When the x-axis or y-axis selector changes, update the graph data
         document.getElementById('xAxisDSSelector').addEventListener('change', function() {
           const xData = dataset[this.value];
           const yLabel = document.getElementById('yAxisDSSelector').value;
           const yData = dataset[yLabel];
-          updateChartData(xData, yData, yLabel);
+          updateGraphData(xData, yData, yLabel);
         });
         document.getElementById('yAxisDSSelector').addEventListener('change', function() {
           const xData = dataset[document.getElementById('xAxisDSSelector').value];
           const yLabel = this.value;
           const yData = dataset[yLabel];
-          updateChartData(xData, yData, yLabel);
+          updateGraphData(xData, yData, yLabel);
         });
 
 
@@ -311,20 +320,20 @@
             document.getElementById('customColorPicker').style.display = 'block';
           } else {
             document.getElementById('customColorPicker').style.display = 'none';
-            updateChartColours(selectedColor);
+            updateGraphColours(selectedColor);
           }
         });
 
-        document.getElementById('chartColorSelector').addEventListener('input', function() {
+        document.getElementById('graphColorSelector').addEventListener('input', function() {
           const selectedColor = this.value;
-          updateChartColours(selectedColor);
+          updateGraphColours(selectedColor);
         });
 
         // Download button functionality
         document.getElementById('downloadBtn').addEventListener('click', function() {
           const link = document.createElement('a');
-          link.href = myChart.toBase64Image();
-          link.download = 'chart.png';
+          link.href = mainGraph.toBase64Image();
+          link.download = 'pcars-graph.png';
           link.click();
         });
 
