@@ -65,6 +65,18 @@
                   </select>
                 </div>
                 <div>
+                  <label class="block text-sm font-medium">Value Axis Direction</label>
+                  <select class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" id="graphDirectionSelector">
+                    <option>Horizontal</option>
+                    <option>Vertical</option>
+                  </select>
+                </div>
+                <!-- Checkbox for stacked -->
+                <div>
+                  <label class="block text-sm font-medium">Stacked</label>
+                  <input type="checkbox" id="graphStackedCheckbox" class="mt-1">
+                </div>
+                <div>
                   <label class="block text-sm font-medium"></label>x-axis data</label>
                   <select class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" id="xAxisDSSelector">
                     <option>Column 1</option>
@@ -124,6 +136,18 @@
     </div>
 
     <script>
+
+      // Configuration
+      let configuration = {
+        graphType: 'line',
+        graphDirection: 'horizontal',
+        graphStacked: false,
+        xAxisData: undefined,
+        yAxisData: undefined,
+
+        graphTitle: 'Graph Title'
+      }
+
       // Tab functionality
       document.addEventListener('DOMContentLoaded', function() {
         const tabButtons = document.querySelectorAll('.tab-btn');
@@ -167,6 +191,7 @@
             }]
           },
           options: {
+            //indexAxis: 'y',
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
@@ -177,58 +202,82 @@
             },
             scales: {
               x: {
+                //stacked: true,
                 beginAtZero: true,
                 ticks: {
                   autoSkip: false // Prevent skipping of labels
                 }
               },
               y: {
+                //stacked: true,
                 beginAtZero: true
               }
             }
           }
         });
-        
-        // Add event listener for graph type selector
-        document.getElementById('graphTypeSelector').addEventListener('change', function() {
-          const selectedType = this.value.toLowerCase();
-          
-          // Determine the actual graph type (handle 'Area' specially)
-          let graphType = selectedType;
-          let fillOption = false;
-          
-          if (selectedType === 'area') {
-            graphType = 'line';
-            fillOption = true;
-          }
-          
-          // Update graph configuration
-          mainGraph.config.type = graphType;
-          mainGraph.data.datasets.forEach(dataset => {
-            dataset.fill = fillOption;
-          });
+
+        function refreshGraph() {
+
+          mainGraph.options.indexAxis = configuration.graphDirection === 'horizontal' ? 'x' : 'y';
+          mainGraph.options.plugins.title.text = configuration.graphTitle;
 
           // Adjust scales dynamically
           mainGraph.options.scales = {
             x: {
+              stacked: configuration.graphStacked,
               beginAtZero: true, // Ensure the x-axis starts at zero
               ticks: {
                 autoSkip: false // Prevent skipping of labels
               }
             },
             y: {
+              stacked: configuration.graphStacked,
               beginAtZero: true // Ensure the y-axis starts at zero
             }
           };
-          
-          // Update the graph
+
           mainGraph.update();
+        }
+        
+        // Add event listener for graph type selector
+        document.getElementById('graphTypeSelector').addEventListener('change', function() {
+          const selectedType = this.value.toLowerCase();
+          
+          // Determine the actual graph type (handle 'Area' specially)
+          configuration.graphType = selectedType;
+          let fillOption = false;
+          
+          if (selectedType === 'area') {
+            configuration.graphType = 'line';
+            fillOption = true;
+          }
+          
+          // Update graph configuration
+          mainGraph.config.type = configuration.graphType;
+          mainGraph.data.datasets.forEach(dataset => {
+            dataset.fill = fillOption;
+          });
+
+          refreshGraph();
+        });
+
+        // Listener for graph direction selector
+        document.getElementById('graphDirectionSelector').addEventListener('change', function() {
+          configuration.graphDirection = this.value.toLowerCase();
+          refreshGraph();
+        });
+
+        // Listener for graph stacked checkbox
+        document.getElementById('graphStackedCheckbox').addEventListener('change', function() {
+          const isChecked = this.checked;
+          configuration.graphStacked = isChecked;
+          refreshGraph();
         });
 
         // Function to update graph data
         function updateGraphData (graphData) {
-          mainGraph.data = graphData
-          mainGraph.update()
+          mainGraph.data = graphData;
+          refreshGraph();
         }
 
         // Function to update graph colours
@@ -236,7 +285,7 @@
           mainGraph.data.datasets[0].borderColor = colour;
           // reduce opacity of the background colour
           mainGraph.data.datasets[0].backgroundColor = colour + '33'; // 20% opacity
-          mainGraph.update();
+          refreshGraph();
         }
 
         function updateColumns (columnList) {
@@ -246,11 +295,17 @@
           yAxisSelector.innerHTML = '';
 
           columnList.forEach(column => {
+            if (configuration.xAxisData === undefined) {
+              configuration.xAxisData = column;
+            }
             const optionX = document.createElement('option');
             optionX.value = column;
             optionX.textContent = column;
             xAxisSelector.appendChild(optionX);
 
+            if (configuration.yAxisData === undefined) {
+              configuration.yAxisData = column;
+            }
             const optionY = document.createElement('option');
             optionY.value = column;
             optionY.textContent = column;
