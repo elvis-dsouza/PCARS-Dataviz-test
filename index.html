@@ -154,9 +154,9 @@
         // Initialize graph
         const ctx = document.getElementById('mainGraph').getContext('2d');
         const mainGraph = new Chart(ctx, {
-          type: 'line',
+          type: 'bar',
           data: {
-            labels: ['Start', 'Sector 1', 'Sector 2', 'Sector 3', 'Finish'],
+            //labels: ['Start', 'Sector 1', 'Sector 2', 'Sector 3', 'Finish'],
             datasets: [{
               label: '<y-axis>',
               data: [0, 120, 160, 140, 180],
@@ -172,7 +172,7 @@
             plugins: {
               title: {
                 display: true,
-                text: 'Lap Performance Data'
+                text: 'Graph Title'
               }
             }
           }
@@ -209,6 +209,11 @@
           mainGraph.update();
         }
 
+        function updateGraphDataUnified (graphData) {
+          mainGraph.data = graphData
+          mainGraph.update()
+        }
+
         // Function to update graph colours
         function updateGraphColours (colour) {
           mainGraph.data.datasets[0].borderColor = colour;
@@ -236,67 +241,238 @@
           });
         }
 
-        let dataset = {};
+        function extractGraphData (data) {
+          // Group the data by patient
+          const patients = {};
+          data.forEach(({ Patient, Dose, Value }) => {
+            if (!patients[Patient]) {
+              patients[Patient] = [];
+            }
+            patients[Patient].push({ Dose, Value });
+          });
+
+          // Extract doses (common across all patients)
+          const doses = ['D0', 'D1', 'D2', 'D3'];
+
+          // Prepare graph data
+          const graphData = {
+            labels: doses,  // X-axis will be the doses
+            datasets: Object.keys(patients).map((patient, index) => {
+              const patientData = patients[patient];
+              const values = doses.map(dose => {
+                const doseData = patientData.find(item => item.Dose === dose);
+                return doseData ? doseData.Value : null; // Default to null if missing
+              });
+
+              return {
+                label: patient,  // Line for each patient
+                data: values,
+                //borderColor: `hsl(${(index * 60) % 360}, 100%, 50%)`,  // Different color for each line
+                fill: false,  // Do not fill under the line
+                tension: 0.1  // Smooth the lines a bit
+              };
+            })
+          };
+
+          return graphData
+        }
+
+        function extractGraphData2 (data) {
+          
+          // Group the data by patient
+          const doses = {};
+
+          data.forEach(({ Patient, Dose, Value }) => {
+            console.log(Patient, Dose, Value)
+            if (!doses[Dose]) {
+              doses[Dose] = [];
+            }
+            doses[Dose].push({ Patient, Value });
+          });
+
+          // Extract patients (common across all doses)
+          const patients = ['P1', 'P2', 'P3', 'P4', 'P5'];
+
+          // Prepare graph data
+          const graphData = {
+            labels: patients,  // X-axis will be the patients
+            datasets: Object.keys(doses).map((dose, index) => {
+              const doseData = doses[dose];
+              const values = patients.map(patient => {
+                const patientData = doseData.find(item => item.Patient === patient);
+                return patientData ? patientData.Value : null; // Default to null if missing
+              });
+
+              return {
+                label: dose,  // Line for each dose
+                data: values,
+                //borderColor: `hsl(${(index * 60) % 360}, 100%, 50%)`,  // Different color for each line
+                fill: false,  // Do not fill under the line
+                tension: 0.1  // Smooth the lines a bit
+              };
+            })
+          };
+
+          return graphData
+        }
+
+
+        function extractGraphDataBest (data, groupedBy, crossProperty) {
+          
+          // Group the data by patient
+          const groups = {};
+          const crossValues = [];
+
+          
+          data.forEach(({ Patient, Dose, Value }) => {
+
+            const groupKey = eval(groupedBy)
+            const crossCol = eval(crossProperty)
+
+            if (!groups[groupKey]) {
+              groups[groupKey] = [];
+            }
+
+            if (groupedBy === 'Dose') {
+              groups[groupKey].push({ Patient, Value });
+            } else if (groupedBy === 'Patient') {
+              groups[groupKey].push({ Dose, Value });
+            } else if (groupedBy === 'Value') {
+              groups[groupKey].push({ Patient, Dose });
+            }
+
+            if (crossValues.indexOf(crossCol) === -1) {
+              crossValues.push({crossCol})
+            }
+          });
+
+          // Extract cross columns
+          //const patients = ['P1', 'P2', 'P3', 'P4', 'P5'];
+
+          // Prepare graph data
+          const graphData = {
+            labels: crossValues,  // X-axis will be the patients
+            datasets: Object.keys(groups).map((group, index) => {
+              const groupData = groups[group];
+              const values = crossValues.map(cross => {
+                const crossData = groupData.find(item => item.crossProperty === cross);
+                return crossData ? crossData.Value : null; // Default to null if missing
+              });
+
+              return {
+                label: group,  // Line for each patient
+                data: values,
+                //borderColor: `hsl(${(index * 60) % 360}, 100%, 50%)`,  // Different color for each line
+                fill: false,  // Do not fill under the line
+                tension: 0.1  // Smooth the lines a bit
+              };
+            })
+          };
+
+          return graphData
+        }
+
+        
+
+        function displayDataTable(data)
+        {
+          var table = document.getElementById("datatable");
+          table.innerHTML = "";
+
+          let headers = data.shift()
+
+          // Create the table header row (<tr>) and fill it with <th> elements
+          let headerRow = document.createElement('tr')
+          headerRow.classList.add("bg-gray-100", "border-b", "border-gray-200", "text-gray-600")
+
+          // Loop through the header array and create <th> elements
+          headers.forEach(header => {
+            let th = document.createElement('th')
+            th.classList.add("border", "border-gray-200", "px-4", "py-2")
+            th.textContent = header  // Set the text content of the header cell
+            headerRow.appendChild(th)  // Append the <th> to the header row
+          });
+          // Append the header row to the <thead> of the table
+          table.appendChild(document.createElement('thead')).appendChild(headerRow)
+
+          // Draw table rows
+          for (let row of data) {
+            let tr = table.insertRow()
+            for (let [index,cell] of row.entries()) {
+              if (index == 0) {
+                let th = document.createElement('th')
+                th.classList.add("bg-gray-100", "border", "border-gray-200", "text-gray-600", "px-4", "py-2")
+                th.textContent = cell
+                tr.appendChild(th)
+              } else {
+                let td = tr.insertCell()
+                td.classList.add("border", "border-gray-100", "px-4", "py-2")
+                td.innerHTML = cell
+              }
+            }
+          }
+        }
+
+        let dataset = {}
+        function loadDataset(data, fields)
+        {
+          dataset = data
+          console.log(dataset) // Log the dataset to the console
+
+          updateColumns(fields) // Update the columns in the dropdowns
+
+          const groupedData = data.reduce((acc, { Patient, Dose, Value }) => {
+            // If the patient doesn't exist in the accumulator, add an empty object for that patient
+            if (!acc[Patient]) {
+              acc[Patient] = {};
+            }
+            
+            // Assign the dose and value to the correct patient and dose
+            acc[Patient][Dose] = Value;
+
+            return acc;
+          }, {});
+          console.log(groupedData); // Log the grouped data to the console
+
+          /*const xData = dataset[document.getElementById('xAxisDSSelector').value]
+          const yLabel = document.getElementById('yAxisDSSelector').value
+          const yData = dataset[yLabel]
+          updateGraphData(xData, yData, yLabel)*/
+
+          //graphData = extractGraphData2(dataset)
+          graphData = extractGraphData(dataset, 'Patient', 'Dose')
+          console.log(graphData) // Log the chart data to the console
+          updateGraphDataUnified(graphData)
+
+        }
 
         //Add data loading functionality
-        function loadDataCSV () {
-          Papa.parse("pcars.csv", {
+        function loadDataCSV (display_csv, dataset_csv) {
+
+          // Load data table for display
+          Papa.parse(display_csv, {
             download: true,
             skipEmptyLines: true,
 
             complete : csv => {
-              var table = document.getElementById("datatable");
-              table.innerHTML = "";
+              // Call the function to display data in the table
+              displayDataTable(csv.data);
+            }
+          });
 
-              let headers = csv.data.shift();
-              updateColumns(headers); // Update the columns in the dropdowns
+          // Load data for stats and graphing
+          Papa.parse(dataset_csv, {
+            download: true,
+            skipEmptyLines: true,
+            header:true,
 
-              // Create the table header row (<tr>) and fill it with <th> elements
-              let headerRow = document.createElement('tr');
-              headerRow.classList.add("bg-gray-100", "border-b", "border-gray-200", "text-gray-600");
-
-              // Make a dataset as a dictionary mapping column names to data
-              dataset = {};
-              headers.forEach((header, index) => {
-                dataset[header] = csv.data.map(row => row[index]);
-              });
-
-              // Loop through the header array and create <th> elements
-              headers.forEach(header => {
-                let th = document.createElement('th');
-                th.classList.add("border", "border-gray-200", "px-4", "py-2");
-                th.textContent = header;  // Set the text content of the header cell
-                headerRow.appendChild(th);  // Append the <th> to the header row
-              });
-              // Append the header row to the <thead> of the table
-              table.appendChild(document.createElement('thead')).appendChild(headerRow);
-
-              // Draw table rows
-              for (let row of csv.data) {
-                let tr = table.insertRow()
-                for (let [index,cell] of row.entries()) {
-                  if (index == 0) {
-                    let th = document.createElement('th');
-                    th.classList.add("bg-gray-100", "border", "border-gray-200", "text-gray-600", "px-4", "py-2");
-                    th.textContent = cell
-                    tr.appendChild(th)
-                  } else {
-                    let td = tr.insertCell()
-                    td.classList.add("border", "border-gray-100", "px-4", "py-2");
-                    td.innerHTML = cell
-                  }
-                }
-              }
-
-              const xData = dataset[document.getElementById('xAxisDSSelector').value];
-              const yLabel = document.getElementById('yAxisDSSelector').value;
-              const yData = dataset[yLabel];
-              updateGraphData(xData, yData, yLabel);
+            complete : csv => {
+              loadDataset(csv.data, csv.meta.fields)
             }
           });
         }
 
-        loadDataCSV(); // Call the function to load data on page load
+        loadDataCSV("pcars.csv", "pcars_dataset.csv"); // Call the function to load data on page load
 
         // When the x-axis or y-axis selector changes, update the graph data
         document.getElementById('xAxisDSSelector').addEventListener('change', function() {
