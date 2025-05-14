@@ -154,7 +154,7 @@
         // Initialize graph
         const ctx = document.getElementById('mainGraph').getContext('2d');
         const mainGraph = new Chart(ctx, {
-          type: 'bar',
+          type: 'line',
           data: {
             //labels: ['Start', 'Sector 1', 'Sector 2', 'Sector 3', 'Finish'],
             datasets: [{
@@ -173,6 +173,17 @@
               title: {
                 display: true,
                 text: 'Graph Title'
+              }
+            },
+            scales: {
+              x: {
+                beginAtZero: true,
+                ticks: {
+                  autoSkip: false // Prevent skipping of labels
+                }
+              },
+              y: {
+                beginAtZero: true
               }
             }
           }
@@ -196,20 +207,26 @@
           mainGraph.data.datasets.forEach(dataset => {
             dataset.fill = fillOption;
           });
+
+          // Adjust scales dynamically
+          mainGraph.options.scales = {
+            x: {
+              beginAtZero: true, // Ensure the x-axis starts at zero
+              ticks: {
+                autoSkip: false // Prevent skipping of labels
+              }
+            },
+            y: {
+              beginAtZero: true // Ensure the y-axis starts at zero
+            }
+          };
           
           // Update the graph
           mainGraph.update();
         });
 
         // Function to update graph data
-        function updateGraphData (xData, yData, yLabel) {
-          mainGraph.data.labels = xData;
-          mainGraph.data.datasets[0].data = yData;
-          mainGraph.data.datasets[0].label = yLabel;
-          mainGraph.update();
-        }
-
-        function updateGraphDataUnified (graphData) {
+        function updateGraphData (graphData) {
           mainGraph.data = graphData
           mainGraph.update()
         }
@@ -241,7 +258,7 @@
           });
         }
 
-        function extractGraphData (data) {
+        function extractGraphData_groupedByDose (data) {
           // Group the data by patient
           const patients = {};
           data.forEach(({ Patient, Dose, Value }) => {
@@ -277,7 +294,7 @@
           return graphData
         }
 
-        function extractGraphData2 (data) {
+        function extractGraphData_groupedByPatient (data) {
           
           // Group the data by patient
           const doses = {};
@@ -316,63 +333,52 @@
           return graphData
         }
 
+        function extractGraphData(data, groupByColumn, labelColumn, valueColumn) {
+          console.log("extractGraphData called with groupByColumn:", groupByColumn, "labelColumn:", labelColumn, "valueColumn:", valueColumn);
+          console.log("Data:", data);
 
-        function extractGraphDataBest (data, groupedBy, crossProperty) {
-          
-          // Group the data by patient
-          const groups = {};
-          const crossValues = [];
+          // Group the data by the specified column
+          const groupedData = {};
 
-          
-          data.forEach(({ Patient, Dose, Value }) => {
-
-            const groupKey = eval(groupedBy)
-            const crossCol = eval(crossProperty)
-
-            if (!groups[groupKey]) {
-              groups[groupKey] = [];
+          data.forEach(item => {
+            const groupKey = item[groupByColumn];
+            if (!groupedData[groupKey]) {
+              groupedData[groupKey] = [];
             }
-
-            if (groupedBy === 'Dose') {
-              groups[groupKey].push({ Patient, Value });
-            } else if (groupedBy === 'Patient') {
-              groups[groupKey].push({ Dose, Value });
-            } else if (groupedBy === 'Value') {
-              groups[groupKey].push({ Patient, Dose });
-            }
-
-            if (crossValues.indexOf(crossCol) === -1) {
-              crossValues.push({crossCol})
-            }
+            groupedData[groupKey].push(item);
           });
 
-          // Extract cross columns
-          //const patients = ['P1', 'P2', 'P3', 'P4', 'P5'];
+          // Extract unique labels for the x-axis
+          const labels = [...new Set(data.map(item => item[labelColumn]))];
 
           // Prepare graph data
           const graphData = {
-            labels: crossValues,  // X-axis will be the patients
-            datasets: Object.keys(groups).map((group, index) => {
-              const groupData = groups[group];
-              const values = crossValues.map(cross => {
-                const crossData = groupData.find(item => item.crossProperty === cross);
-                return crossData ? crossData.Value : null; // Default to null if missing
+            labels: labels, // X-axis labels
+            datasets: Object.keys(groupedData).map((group, index) => {
+              const groupData = groupedData[group];
+              const values = labels.map(label => {
+                const labelData = groupData.find(item => item[labelColumn] === label);
+                if (labelData === undefined) {
+                  console.warn(`Missing data for group: ${group}, label: ${label}`);
+                }
+                /*else {
+                  console.log(`Found data for group: ${group}, label: ${label}`);
+                }*/
+                return labelData ? labelData[valueColumn] : null; // Default to null if missing
               });
 
               return {
-                label: group,  // Line for each patient
+                label: group, // Line for each group
                 data: values,
-                //borderColor: `hsl(${(index * 60) % 360}, 100%, 50%)`,  // Different color for each line
-                fill: false,  // Do not fill under the line
-                tension: 0.1  // Smooth the lines a bit
+                //borderColor: `hsl(${(index * 60) % 360}, 100%, 50%)`, // Different color for each line
+                tension: 0.1 // Smooth the lines a bit
               };
             })
           };
 
-          return graphData
+          console.log("Graph data prepared:", graphData);
+          return graphData;
         }
-
-        
 
         function displayDataTable(data)
         {
@@ -419,7 +425,7 @@
           dataset = data
           console.log(dataset) // Log the dataset to the console
 
-          updateColumns(fields) // Update the columns in the dropdowns
+          updateColumns(fields.slice(0, fields.length -1)) // Update the columns in the dropdowns
 
           const groupedData = data.reduce((acc, { Patient, Dose, Value }) => {
             // If the patient doesn't exist in the accumulator, add an empty object for that patient
@@ -434,15 +440,12 @@
           }, {});
           console.log(groupedData); // Log the grouped data to the console
 
-          /*const xData = dataset[document.getElementById('xAxisDSSelector').value]
-          const yLabel = document.getElementById('yAxisDSSelector').value
-          const yData = dataset[yLabel]
-          updateGraphData(xData, yData, yLabel)*/
-
-          //graphData = extractGraphData2(dataset)
-          graphData = extractGraphData(dataset, 'Patient', 'Dose')
+          //graphData = extractGraphData_groupedByPatient(dataset)
+          //graphData = extractGraphData(dataset, 'Dose', 'Patient', 'Value')
+          //graphData = extractGraphData(dataset, 'Patient', 'Dose', 'Value')#
+          graphData = extractGraphData(dataset, 'Dose', 'Patient', 'Value')
           console.log(graphData) // Log the chart data to the console
-          updateGraphDataUnified(graphData)
+          updateGraphData(graphData)
 
         }
 
@@ -476,17 +479,18 @@
 
         // When the x-axis or y-axis selector changes, update the graph data
         document.getElementById('xAxisDSSelector').addEventListener('change', function() {
-          const xData = dataset[this.value];
-          const yLabel = document.getElementById('yAxisDSSelector').value;
-          const yData = dataset[yLabel];
-          updateGraphData(xData, yData, yLabel);
+          refreshGraphParams()
         });
         document.getElementById('yAxisDSSelector').addEventListener('change', function() {
-          const xData = dataset[document.getElementById('xAxisDSSelector').value];
-          const yLabel = this.value;
-          const yData = dataset[yLabel];
-          updateGraphData(xData, yData, yLabel);
+          refreshGraphParams()
         });
+
+        function refreshGraphParams() {
+          const xLabel = document.getElementById('xAxisDSSelector').value
+          const yLabel = document.getElementById('yAxisDSSelector').value
+          const graphData = extractGraphData(dataset, xLabel, yLabel, 'Value')
+          updateGraphData(graphData)
+        }
 
 
         // Design tab functionality
