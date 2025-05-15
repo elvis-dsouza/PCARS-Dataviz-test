@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@sgratzl/chartjs-chart-boxplot@4.4.4/build/index.umd.min.js"></script>
     <script src="lib/papaparse.min.js"></script>
     <style type="text/tailwindcss">
         @theme {
@@ -62,6 +63,8 @@
                     <option>Line</option>
                     <option>Bar</option>
                     <option>Area</option>
+                    <option>Boxplot</option>
+                    <option>Scatter</option>
                   </select>
                 </div>
                 <div>
@@ -141,6 +144,7 @@
       let configuration = {
         graphType: 'line',
         graphDirection: 'horizontal',
+        graphFill: false,
         graphStacked: false,
         xAxisData: undefined,
         yAxisData: undefined,
@@ -181,14 +185,17 @@
           type: 'line',
           data: {
             //labels: ['Start', 'Sector 1', 'Sector 2', 'Sector 3', 'Finish'],
-            datasets: [{
-              label: '<y-axis>',
-              data: [0, 120, 160, 140, 180],
-              borderColor: 'rgb(59, 130, 246)',
-              backgroundColor: 'rgba(59, 130, 246, 0.1)',
-              fill: true,
-              tension: 0.3
-            }]
+            labels: ['Sample 1', 'Sample 2', 'Sample 3'],
+            datasets: [
+                {
+                    label: 'Dataset 1',
+                    data: [
+                        {min: 5, q1: 7, median: 9, q3: 12, max: 15},
+                        {min: 6, q1: 8, median: 10, q3: 13, max: 16},
+                        {min: 4, q1: 6, median: 8, q3: 11, max: 14}
+                    ]
+                }
+            ]
           },
           options: {
             //indexAxis: 'y',
@@ -218,9 +225,13 @@
 
         function refreshGraph() {
 
+          mainGraph.config.type = configuration.graphType;
+          mainGraph.data.datasets.forEach(dataset => {
+            dataset.fill = configuration.graphFill;
+          });
           mainGraph.options.indexAxis = configuration.graphDirection === 'horizontal' ? 'x' : 'y';
           mainGraph.options.plugins.title.text = configuration.graphTitle;
-
+          
           // Adjust scales dynamically
           mainGraph.options.scales = {
             x: {
@@ -235,7 +246,7 @@
               beginAtZero: true // Ensure the y-axis starts at zero
             }
           };
-
+          
           mainGraph.update();
         }
         
@@ -245,33 +256,28 @@
           
           // Determine the actual graph type (handle 'Area' specially)
           configuration.graphType = selectedType;
-          let fillOption = false;
+          configuration.graphFill = false;
           
           if (selectedType === 'area') {
             configuration.graphType = 'line';
-            fillOption = true;
+            configuration.graphFill = true;
           }
           
-          // Update graph configuration
-          mainGraph.config.type = configuration.graphType;
-          mainGraph.data.datasets.forEach(dataset => {
-            dataset.fill = fillOption;
-          });
 
-          refreshGraph();
+          refreshGraphParams();
         });
 
         // Listener for graph direction selector
         document.getElementById('graphDirectionSelector').addEventListener('change', function() {
           configuration.graphDirection = this.value.toLowerCase();
-          refreshGraph();
+          refreshGraphParams();
         });
 
         // Listener for graph stacked checkbox
         document.getElementById('graphStackedCheckbox').addEventListener('change', function() {
           const isChecked = this.checked;
           configuration.graphStacked = isChecked;
-          refreshGraph();
+          refreshGraphParams();
         });
 
         // Function to update graph data
@@ -388,7 +394,7 @@
           return graphData
         }
 
-        function extractGraphData(data, groupByColumn, labelColumn, valueColumn) {
+        function extractGraphData(data, groupByColumn, labelColumn, valueColumn, boxed) {
           console.log("extractGraphData called with groupByColumn:", groupByColumn, "labelColumn:", labelColumn, "valueColumn:", valueColumn);
           console.log("Data:", data);
 
@@ -411,16 +417,44 @@
             labels: labels, // X-axis labels
             datasets: Object.keys(groupedData).map((group, index) => {
               const groupData = groupedData[group];
-              const values = labels.map(label => {
+              let values = labels.map(label => {
                 const labelData = groupData.find(item => item[labelColumn] === label);
-                if (labelData === undefined) {
-                  console.warn(`Missing data for group: ${group}, label: ${label}`);
-                }
-                /*else {
-                  console.log(`Found data for group: ${group}, label: ${label}`);
-                }*/
                 return labelData ? labelData[valueColumn] : null; // Default to null if missing
               });
+
+              function getQuartiles(arr) {
+                // Sort the array
+                arr = arr.sort((a, b) => a - b).map(Number);
+
+                // Function to find the median
+                function median(arr) {
+                    const middle = Math.floor(arr.length / 2);
+                    if (arr.length % 2 === 0) {
+                        return (arr[middle - 1] + arr[middle]) / 2;
+                    } else {
+                        return arr[middle];
+                    }
+                }
+
+                // Find Q2 (median)
+                const Q2 = median(arr);
+
+                // Find Q1 (first quartile) and Q3 (third quartile)
+                const middleIndex = Math.floor(arr.length / 2);
+
+                const lowerHalf = arr.slice(0, middleIndex);
+                const upperHalf = arr.slice(arr.length % 2 === 0 ? middleIndex : middleIndex + 1);
+
+                const Q1 = median(lowerHalf);
+                const Q3 = median(upperHalf);
+
+                return { min: arr[0], q1: Q1, median: Q2, q3: Q3, max: arr[arr.length - 1] };
+            }
+
+              // boxed
+              if (boxed) {
+                values = [getQuartiles(values)];
+              }
 
               return {
                 label: group, // Line for each group
@@ -498,9 +532,11 @@
           //graphData = extractGraphData_groupedByPatient(dataset)
           //graphData = extractGraphData(dataset, 'Dose', 'Patient', 'Value')
           //graphData = extractGraphData(dataset, 'Patient', 'Dose', 'Value')#
-          graphData = extractGraphData(dataset, 'Dose', 'Patient', 'Value')
-          console.log(graphData) // Log the chart data to the console
-          updateGraphData(graphData)
+          //graphData = extractGraphData(dataset, 'Dose', 'Patient', 'Value', false)
+          //console.log(graphData) // Log the chart data to the console
+          //updateGraphData(graphData)
+
+          refreshGraphParams();
 
         }
 
@@ -543,7 +579,8 @@
         function refreshGraphParams() {
           const xLabel = document.getElementById('xAxisDSSelector').value
           const yLabel = document.getElementById('yAxisDSSelector').value
-          const graphData = extractGraphData(dataset, xLabel, yLabel, 'Value')
+          const boxed = document.getElementById('graphTypeSelector').value === 'Boxplot'
+          const graphData = extractGraphData(dataset, xLabel, yLabel, 'Value', boxed)
           updateGraphData(graphData)
         }
 
