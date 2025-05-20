@@ -371,15 +371,21 @@
             graphData.datasets = [{
               label: 'Combined',
               data: combinedData,
-              //backgroundColor: 'rgba(75, 192, 192, 0.2)',
+              //backgroundColor: 'rgba(75, 192, 192, 0)',
               //borderColor: 'rgba(75, 192, 192, 1)',
+              meanRadius: 0,
+              //meanStyle: 'dash',
+              itemRadius: 4,
+              itemBackgroundColor: 'rgba(75, 192, 192, 0.5)',
+              itemBorderColor: 'rgba(75, 192, 192)',
+              itemBorderWidth: 1,
               borderWidth: 1,
               boxplot: true
             }];
 
             graphData.labels = Object.keys(groupedData);
           }
-          
+
           return graphData;
         }
 
