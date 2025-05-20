@@ -80,7 +80,7 @@
                   <input type="checkbox" id="graphStackedCheckbox" class="mt-1">
                 </div>
                 <div>
-                  <label class="block text-sm font-medium"></label>x-axis data</label>
+                  <label class="block text-sm font-medium"></label>Grouped</label>
                   <select class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" id="xAxisDSSelector">
                     <option>Column 1</option>
                     <option>Column 2</option>
@@ -88,7 +88,7 @@
                   </select>
                 </div>
                 <div>
-                  <label class="block text-sm font-medium">y-axis data</label>
+                  <label class="block text-sm font-medium">Labels</label>
                   <select class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" id="yAxisDSSelector">
                     <option>Column 1</option>
                     <option>Column 2</option>
@@ -319,87 +319,9 @@
           });
         }
 
-        function extractGraphData_groupedByDose (data) {
-          // Group the data by patient
-          const patients = {};
-          data.forEach(({ Patient, Dose, Value }) => {
-            if (!patients[Patient]) {
-              patients[Patient] = [];
-            }
-            patients[Patient].push({ Dose, Value });
-          });
-
-          // Extract doses (common across all patients)
-          const doses = ['D0', 'D1', 'D2', 'D3'];
-
-          // Prepare graph data
-          const graphData = {
-            labels: doses,  // X-axis will be the doses
-            datasets: Object.keys(patients).map((patient, index) => {
-              const patientData = patients[patient];
-              const values = doses.map(dose => {
-                const doseData = patientData.find(item => item.Dose === dose);
-                return doseData ? doseData.Value : null; // Default to null if missing
-              });
-
-              return {
-                label: patient,  // Line for each patient
-                data: values,
-                //borderColor: `hsl(${(index * 60) % 360}, 100%, 50%)`,  // Different color for each line
-                fill: false,  // Do not fill under the line
-                tension: 0.1  // Smooth the lines a bit
-              };
-            })
-          };
-
-          return graphData
-        }
-
-        function extractGraphData_groupedByPatient (data) {
-          
-          // Group the data by patient
-          const doses = {};
-
-          data.forEach(({ Patient, Dose, Value }) => {
-            console.log(Patient, Dose, Value)
-            if (!doses[Dose]) {
-              doses[Dose] = [];
-            }
-            doses[Dose].push({ Patient, Value });
-          });
-
-          // Extract patients (common across all doses)
-          const patients = ['P1', 'P2', 'P3', 'P4', 'P5'];
-
-          // Prepare graph data
-          const graphData = {
-            labels: patients,  // X-axis will be the patients
-            datasets: Object.keys(doses).map((dose, index) => {
-              const doseData = doses[dose];
-              const values = patients.map(patient => {
-                const patientData = doseData.find(item => item.Patient === patient);
-                return patientData ? patientData.Value : null; // Default to null if missing
-              });
-
-              return {
-                label: dose,  // Line for each dose
-                data: values,
-                //borderColor: `hsl(${(index * 60) % 360}, 100%, 50%)`,  // Different color for each line
-                fill: false,  // Do not fill under the line
-                tension: 0.1  // Smooth the lines a bit
-              };
-            })
-          };
-
-          return graphData
-        }
-
         function extractGraphData(data, groupByColumn, labelColumn, valueColumn, boxed) {
-          console.log("extractGraphData called with groupByColumn:", groupByColumn, "labelColumn:", labelColumn, "valueColumn:", valueColumn);
-          console.log("Data:", data);
-
           // Group the data by the specified column
-          const groupedData = {};
+          let groupedData = {};
 
           data.forEach(item => {
             const groupKey = item[groupByColumn];
@@ -422,38 +344,9 @@
                 return labelData ? labelData[valueColumn] : null; // Default to null if missing
               });
 
-              function getQuartiles(arr) {
-                // Sort the array
-                arr = arr.sort((a, b) => a - b).map(Number);
-
-                // Function to find the median
-                function median(arr) {
-                    const middle = Math.floor(arr.length / 2);
-                    if (arr.length % 2 === 0) {
-                        return (arr[middle - 1] + arr[middle]) / 2;
-                    } else {
-                        return arr[middle];
-                    }
-                }
-
-                // Find Q2 (median)
-                const Q2 = median(arr);
-
-                // Find Q1 (first quartile) and Q3 (third quartile)
-                const middleIndex = Math.floor(arr.length / 2);
-
-                const lowerHalf = arr.slice(0, middleIndex);
-                const upperHalf = arr.slice(arr.length % 2 === 0 ? middleIndex : middleIndex + 1);
-
-                const Q1 = median(lowerHalf);
-                const Q3 = median(upperHalf);
-
-                return { min: arr[0], q1: Q1, median: Q2, q3: Q3, max: arr[arr.length - 1] };
-            }
-
               // boxed
               if (boxed) {
-                values = [getQuartiles(values)];
+                values = [values];
               }
 
               return {
@@ -465,7 +358,28 @@
             })
           };
 
-          console.log("Graph data prepared:", graphData);
+          // combine data values across groups if boxed
+          if (boxed) {
+            
+            combinedData = [];
+            graphData.datasets.forEach(dataset => {
+              dataset.data.forEach(item => {
+                combinedData.push(item);
+              });
+            });
+            
+            graphData.datasets = [{
+              label: 'Combined',
+              data: combinedData,
+              //backgroundColor: 'rgba(75, 192, 192, 0.2)',
+              //borderColor: 'rgba(75, 192, 192, 1)',
+              borderWidth: 1,
+              boxplot: true
+            }];
+
+            graphData.labels = Object.keys(groupedData);
+          }
+          
           return graphData;
         }
 
@@ -512,7 +426,6 @@
         function loadDataset(data, fields)
         {
           dataset = data
-          console.log(dataset) // Log the dataset to the console
 
           updateColumns(fields.slice(0, fields.length -1)) // Update the columns in the dropdowns
 
@@ -527,14 +440,6 @@
 
             return acc;
           }, {});
-          console.log(groupedData); // Log the grouped data to the console
-
-          //graphData = extractGraphData_groupedByPatient(dataset)
-          //graphData = extractGraphData(dataset, 'Dose', 'Patient', 'Value')
-          //graphData = extractGraphData(dataset, 'Patient', 'Dose', 'Value')#
-          //graphData = extractGraphData(dataset, 'Dose', 'Patient', 'Value', false)
-          //console.log(graphData) // Log the chart data to the console
-          //updateGraphData(graphData)
 
           refreshGraphParams();
 
