@@ -152,6 +152,18 @@
         graphTitle: 'Graph Title'
       }
 
+      const bgColorPlugin = {
+        id: 'customCanvasBackgroundColor',
+        beforeDraw: (chart, args, options) => {
+          const {ctx} = chart;
+          ctx.save();
+          ctx.globalCompositeOperation = 'destination-over';
+          ctx.fillStyle = options.color || '#99ffff';
+          ctx.fillRect(0, 0, chart.width, chart.height);
+          ctx.restore();
+        }
+      };
+
       // Tab functionality
       document.addEventListener('DOMContentLoaded', function() {
         const tabButtons = document.querySelectorAll('.tab-btn');
@@ -205,6 +217,9 @@
               title: {
                 display: true,
                 text: 'Graph Title'
+              },
+              customCanvasBackgroundColor: {
+                color: 'white',
               }
             },
             scales: {
@@ -220,7 +235,8 @@
                 beginAtZero: true
               }
             }
-          }
+          },
+          plugins: [bgColorPlugin]
         });
 
         function refreshGraph() {
