@@ -146,8 +146,8 @@
         graphDirection: 'horizontal',
         graphFill: false,
         graphStacked: false,
-        xAxisData: undefined,
-        yAxisData: undefined,
+        groupedColumn: undefined,
+        labelColumn: undefined,
 
         graphTitle: 'Graph Title'
       }
@@ -262,6 +262,12 @@
             configuration.graphType = 'line';
             configuration.graphFill = true;
           }
+          else if (selectedType === 'boxplot') {
+            configuration.graphFill = true;
+          }
+          else if (selectedType === 'scatter') {
+            configuration.graphType = 'boxplot';
+          }
           
 
           refreshGraphParams();
@@ -301,16 +307,16 @@
           yAxisSelector.innerHTML = '';
 
           columnList.forEach(column => {
-            if (configuration.xAxisData === undefined) {
-              configuration.xAxisData = column;
+            if (configuration.groupedColumn === undefined) {
+              configuration.groupedColumn = column;
             }
             const optionX = document.createElement('option');
             optionX.value = column;
             optionX.textContent = column;
             xAxisSelector.appendChild(optionX);
 
-            if (configuration.yAxisData === undefined) {
-              configuration.yAxisData = column;
+            if (configuration.labelColumn === undefined) {
+              configuration.labelColumn = column;
             }
             const optionY = document.createElement('option');
             optionY.value = column;
@@ -382,6 +388,15 @@
               borderWidth: 1,
               boxplot: true
             }];
+
+            if (!configuration.graphFill) {
+              graphData.datasets[0].itemRadius = 4;
+              graphData.datasets[0].medianWidth = 40;
+              graphData.datasets[0].medianColor = 'rgba(0, 0, 0, 1.0)';
+              graphData.datasets[0].minWidth = 40;
+              graphData.datasets[0].minColor = 'rgba(0, 0, 0, 1.0)';
+              graphData.datasets[0].backgroundColor = 'rgba(0, 0, 0, 0.0)';
+            }
 
             graphData.labels = Object.keys(groupedData);
           }
@@ -479,7 +494,7 @@
 
         loadDataCSV("pcars.csv", "pcars_dataset.csv"); // Call the function to load data on page load
 
-        // When the x-axis or y-axis selector changes, update the graph data
+        // When the column/axis selectors change, update the graph data
         document.getElementById('xAxisDSSelector').addEventListener('change', function() {
           refreshGraphParams()
         });
@@ -488,10 +503,10 @@
         });
 
         function refreshGraphParams() {
-          const xLabel = document.getElementById('xAxisDSSelector').value
-          const yLabel = document.getElementById('yAxisDSSelector').value
-          const boxed = document.getElementById('graphTypeSelector').value === 'Boxplot'
-          const graphData = extractGraphData(dataset, xLabel, yLabel, 'Value', boxed)
+          configuration.groupedColumn = document.getElementById('xAxisDSSelector').value
+          configuration.labelColumn = document.getElementById('yAxisDSSelector').value
+          const boxed = configuration.graphType === 'boxplot'
+          const graphData = extractGraphData(dataset, configuration.groupedColumn, configuration.labelColumn, 'Value', boxed)
           updateGraphData(graphData)
         }
 
