@@ -80,6 +80,23 @@
                   <input type="checkbox" id="graphStackedCheckbox" class="mt-1">
                 </div>
                 <div>
+                  <label class="block text-sm font-medium">Graph Title</label>
+                  <input type="text" id="graphTitleInput" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" placeholder="Enter graph title">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium">Show Legend</label>
+                  <input type="checkbox" id="showLegendCheckbox" class="mt-1" checked>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium">Legend Position</label>
+                  <select class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" id="legendPositionSelector">
+                    <option>Top</option>
+                    <option>Bottom</option>
+                    <option>Left</option>
+                    <option>Right</option>
+                  </select>
+                </div>
+                <div>
                   <label class="block text-sm font-medium"></label>Grouped</label>
                   <select class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" id="xAxisDSSelector">
                     <option>Column 1</option>
@@ -149,7 +166,9 @@
         groupedColumn: undefined,
         labelColumn: undefined,
 
-        graphTitle: 'Graph Title'
+        graphTitle: 'Graph Title',
+        showLegend: true,
+        legendPosition: 'top'
       }
 
       const bgColorPlugin = {
@@ -247,6 +266,9 @@
           });
           mainGraph.options.indexAxis = configuration.graphDirection === 'horizontal' ? 'x' : 'y';
           mainGraph.options.plugins.title.text = configuration.graphTitle;
+          mainGraph.options.plugins.legend.display = configuration.showLegend;
+          console.log("showLegend: ",configuration.showLegend);
+          mainGraph.options.plugins.legend.position = configuration.legendPosition;
           
           // Adjust scales dynamically
           mainGraph.options.scales = {
@@ -265,12 +287,9 @@
           
           mainGraph.update();
         }
-        
-        // Add event listener for graph type selector
-        document.getElementById('graphTypeSelector').addEventListener('change', function() {
-          const selectedType = this.value.toLowerCase();
-          
-          // Determine the actual graph type (handle 'Area' specially)
+
+        // Graph-type setter
+        function setGraphType(selectedType) {
           configuration.graphType = selectedType;
           configuration.graphFill = false;
           
@@ -284,8 +303,12 @@
           else if (selectedType === 'scatter') {
             configuration.graphType = 'boxplot';
           }
-          
-
+        }
+        
+        // Add event listener for graph type selector
+        document.getElementById('graphTypeSelector').addEventListener('change', function() {
+          const selectedType = this.value.toLowerCase();
+          setGraphType(selectedType);
           refreshGraphParams();
         });
 
@@ -300,6 +323,29 @@
           const isChecked = this.checked;
           configuration.graphStacked = isChecked;
           refreshGraphParams();
+        });
+
+        // Listener for graph title input
+        document.getElementById('graphTitleInput').addEventListener('input', function() {
+          const title = this.value;
+          configuration.graphTitle = title;
+          refreshGraph();
+        });
+
+        // Listener for show legend checkbox
+        document.getElementById('showLegendCheckbox').addEventListener('change', function() {
+          const isChecked = this.checked;
+          configuration.showLegend = isChecked;
+          refreshGraph();
+        });
+
+        // Listener for legend position selector
+        document.getElementById('legendPositionSelector').addEventListener('change', function() {
+          const position = this.value.toLowerCase();
+          configuration.legendPosition = position;
+          if (configuration.showLegend) {
+            refreshGraph();
+          }
         });
 
         // Function to update graph data
@@ -519,11 +565,21 @@
         });
 
         function refreshGraphParams() {
-          configuration.groupedColumn = document.getElementById('xAxisDSSelector').value
-          configuration.labelColumn = document.getElementById('yAxisDSSelector').value
-          const boxed = configuration.graphType === 'boxplot'
-          const graphData = extractGraphData(dataset, configuration.groupedColumn, configuration.labelColumn, 'Value', boxed)
-          updateGraphData(graphData)
+          const selectedType = document.getElementById('graphTypeSelector').value.toLowerCase();
+          setGraphType(selectedType);
+
+          configuration.groupedColumn = document.getElementById('xAxisDSSelector').value;
+          configuration.labelColumn = document.getElementById('yAxisDSSelector').value;
+          configuration.graphDirection = document.getElementById('graphDirectionSelector').value.toLowerCase();
+          configuration.graphStacked = document.getElementById('graphStackedCheckbox').checked;
+          configuration.graphTitle = document.getElementById('graphTitleInput').value;
+          configuration.showLegend = document.getElementById('showLegendCheckbox').checked;
+          configuration.legendPosition = document.getElementById('legendPositionSelector').value.toLowerCase();
+
+          const boxed = configuration.graphType === 'boxplot';
+          const graphData = extractGraphData(dataset, configuration.groupedColumn, configuration.labelColumn, 'Value', boxed);
+
+          updateGraphData(graphData);
         }
 
 
